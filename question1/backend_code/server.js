@@ -8,54 +8,54 @@ app.use(express.json());
 let accessToken = null;
 let tokenExpiry = null;
 
-const clientID = "74bb730b-994e-4eba-a185-0196c67c5aef";
-const clientSecret = "YGcjWrxBqgklHBHH";
-const refreshTokenUrl = "http://20.244.56.144/test/auth";
+const CLIENT_ID = "74bb730b-994e-4eba-a185-0196c67c5aef";
+const CLIENT_SECRET = "YGcjWrxBqgklHBHH";
+const TOKEN_URL = "http://20.244.56.144/test/auth";
 
-const fetchAccessToken = async () => {
+const fetchNewAccessToken = async () => {
   try {
-    const response = await axios.post(refreshTokenUrl, {
+    const response = await axios.post(TOKEN_URL, {
       companyName: "AMITY UNIVERSITY NOIDA",
-      clientID,
-      clientSecret,
+      clientID: CLIENT_ID,
+      clientSecret: CLIENT_SECRET,
       ownerName: "Harshit Mishra",
       ownerEmail: "harshit.mishra6@s.amity.edu",
       rollNo: "A2305221134",
     });
 
     accessToken = response.data.access_token;
-    tokenExpiry = new Date().getTime() + response.data.expires_in * 1000;
+    tokenExpiry = Date.now() + response.data.expires_in * 1000;
   } catch (error) {
-    console.error("Failed to fetch access token:", error);
-    throw new Error("Failed to fetch access token");
+    console.error("Failed to fetch new access token:", error.message);
+    throw new Error("Failed to fetch new access token");
   }
 };
 
-const getAccessToken = async () => {
-  if (!accessToken || new Date().getTime() > tokenExpiry) {
-    await fetchAccessToken();
+const getValidAccessToken = async () => {
+  if (!accessToken || Date.now() > tokenExpiry) {
+    await fetchNewAccessToken();
   }
   return accessToken;
 };
 
-app.get("/products", async (req, res) => {
+app.get("/api/products", async (req, res) => {
   const {
     productName,
-    n,
-    page,
+    n = 10,
+    page = 1,
     sortBy,
-    sortOrder,
+    sortOrder = "asc",
     minPrice,
     maxPrice,
     company,
   } = req.query;
 
-  let itemsPerPage = parseInt(n) || 10;
-  let currentPage = parseInt(page) || 1;
-  let sortDirection = sortOrder === "desc" ? -1 : 1;
+  const itemsPerPage = parseInt(n, 10);
+  const currentPage = parseInt(page, 10);
+  const sortDirection = sortOrder === "desc" ? -1 : 1;
 
   try {
-    const token = await getAccessToken();
+    const token = await getValidAccessToken();
     const response = await axios.get(
       `http://20.244.56.144/test/companies/${company}/categories/${productName}/products`,
       {
@@ -82,16 +82,16 @@ app.get("/products", async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error("Error fetching products:", error);
-    res.status(500).json({ error: "Failed to fetch products" });
+    console.error("Error retrieving products:", error.message);
+    res.status(500).json({ error: "Unable to retrieve products" });
   }
 });
 
-app.get("/products/:productid", async (req, res) => {
+app.get("/api/products/:productid", async (req, res) => {
   const { productid } = req.params;
 
   try {
-    const token = await getAccessToken();
+    const token = await getValidAccessToken();
     const response = await axios.get(
       `http://20.244.56.144/test/products/${productid}`,
       {
@@ -102,11 +102,11 @@ app.get("/products/:productid", async (req, res) => {
 
     res.json(product);
   } catch (error) {
-    console.error("Error fetching product details:", error);
-    res.status(500).json({ error: "Failed to fetch product details" });
+    console.error("Error retrieving product details:", error.message);
+    res.status(500).json({ error: "Unable to retrieve product details" });
   }
 });
 
 app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+  console.log(`Server is up and running on http://localhost:${port}`);
 });
